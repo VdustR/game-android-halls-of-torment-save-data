@@ -207,7 +207,7 @@ The decrypted content is JSON. Top-level keys:
 |-----|------|-------------|-----|
 | `Gold` | float | Gold currency | No hard cap |
 | `Shard` | float | Available (unspent) Torment Shards | No cap |
-| `NumShards` | float | Total shards ever obtained (historical) | No cap |
+| `NumShards` | float | Total shard pool size. Shards are **shared across classes** — switching characters refunds and redistributes from this pool. The game shows unspent = `NumShards` - current class's investment. | No cap |
 | `DuelistCharges` | float | Permanent charges for [Duelist's Spark](https://hot.fandom.com/wiki/Duelist%27s_Spark) necklace. Accumulated by killing Champions (+1), Elites (+2), Bosses (+5), Lords (+15). Bonus = √charges / divisor (diminishing returns). | No cap (√ scaling) |
 
 ### Potions & Ingredients
@@ -280,7 +280,7 @@ Known stats: `Area`, `AttackSpeed`, `CritBonus`, `CritChance`, `Damage`, `Effect
 
 Known classes (14): `Alchemist`, `Archer`, `Bard`, `Beast Huntress`, `Cleric`, `Crone`, `Exterminator`, `Landsknecht`, `Norseman`, `Sage`, `Shield Maiden`, `Sorceress`, `Swordsman`, `Warlock`
 
-> **Note**: `Shard` should equal `NumShards` minus the sum of all `ShardUpgrades` values.
+> **Note**: Shards are shared across all classes. Only one class's investment is active at a time. Set `NumShards` equal to a **single class's total investment** (not the sum of all classes) so that unspent = 0 for every class. `Shard` should be `0`.
 
 ### Equipment & Items
 
@@ -358,8 +358,8 @@ Class marks use `char_` prefix:
 |-------|-------|
 | `Gold` | No cap. ~120,000 is enough to buy everything; endgame players accumulate millions. |
 | `Blessings` | Max 5.0 per blessing. Setting above 5.0 has no additional effect. |
-| `ShardUpgrades` | No hard cap. ~200 per stat is a reasonable endgame value. Very high values (1000+) may cause lag. |
-| `Shard` / `NumShards` | Keep consistent: `Shard` = `NumShards` - total invested. |
+| `ShardUpgrades` | No hard cap. ~200 per stat is a reasonable endgame value. High values on Area, AttackSpeed, EmitCount, Force may cause lag. |
+| `Shard` / `NumShards` | Shards are shared across classes. Set `NumShards` = one class's total investment, `Shard` = 0. |
 | `DuelistCharges` | No cap. 900 ≈ +100% bonus, 5000 ≈ +236%. Diminishing returns (√ scaling). |
 | `ItemStash` | Can add any valid item ID. |
 | `Artifacts` | Can add any valid artifact ID. |
