@@ -125,7 +125,7 @@ MD5("hello") = "5d41402abc4b2a76b9719d911017c592"
 AES key = b"5d41402abc4b2a76b9719d911017c592" (32 bytes of ASCII)
 ```
 
-Source: [Godot Engine `file_access_encrypted.cpp`](https://github.com/godotengine/godot/blob/4.4-stable/core/io/file_access_encrypted.cpp#L107-L117)
+Source: [Godot Engine `file_access_encrypted.cpp`](https://github.com/godotengine/godot/blob/4.4-stable/core/io/file_access_encrypted.cpp#L107-L117) (the game uses a v4.6 custom build; the linked 4.4 source has identical encryption logic)
 
 ### Encryption Password
 
@@ -370,88 +370,14 @@ If the game prompts for conflict resolution, choose **"Use local save"** or **"U
 
 ## Script
 
-A complete decrypt → modify → re-encrypt script:
+See [`hot_save.py`](hot_save.py) for a complete CLI tool that handles decrypt and encrypt:
 
-```python
-#!/usr/bin/env python3
-"""Halls of Torment save file editor."""
+```bash
+# Decrypt save file to JSON
+python hot_save.py decrypt HoT_progress_profile.dat
 
-import hashlib
-import json
-import os
-import struct
-import sys
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-PASSWORD = "e4422259-b391-43d3-9284-5f37189420ed"
-
-
-def get_key():
-    return hashlib.md5(PASSWORD.encode()).hexdigest().encode("ascii")
-
-
-def decrypt(filepath):
-    with open(filepath, "rb") as f:
-        magic = f.read(4)
-        assert magic == b"GDEC", f"Not a GDEC file: {magic}"
-        md5_expected = f.read(16)
-        data_len = struct.unpack("<Q", f.read(8))[0]
-        iv = f.read(16)
-        encrypted = f.read()
-
-    dec = Cipher(algorithms.AES(get_key()), modes.CFB(iv)).decryptor()
-    decrypted = (dec.update(encrypted) + dec.finalize())[:data_len]
-
-    assert hashlib.md5(decrypted).digest() == md5_expected, "MD5 mismatch"
-    return json.loads(decrypted)
-
-
-def encrypt(data, filepath):
-    raw = json.dumps(data, separators=(",", ":")).encode("utf-8")
-    iv = os.urandom(16)
-    pad_len = len(raw) + ((16 - len(raw) % 16) if len(raw) % 16 else 0)
-    padded = raw + b"\x00" * (pad_len - len(raw))
-
-    enc = Cipher(algorithms.AES(get_key()), modes.CFB(iv)).encryptor()
-    encrypted = enc.update(padded) + enc.finalize()
-
-    with open(filepath, "wb") as f:
-        f.write(b"GDEC")
-        f.write(hashlib.md5(raw).digest())
-        f.write(struct.pack("<Q", len(raw)))
-        f.write(iv)
-        f.write(encrypted)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("  python hot_save.py decrypt <save.dat> [output.json]")
-        print("  python hot_save.py encrypt <input.json> [output.dat]")
-        sys.exit(1)
-
-    cmd = sys.argv[1]
-
-    if cmd == "decrypt":
-        infile = sys.argv[2]
-        outfile = sys.argv[3] if len(sys.argv) > 3 else infile.replace(".dat", ".json")
-        data = decrypt(infile)
-        with open(outfile, "w") as f:
-            json.dump(data, f, indent=2)
-        print(f"Decrypted: {infile} -> {outfile}")
-
-    elif cmd == "encrypt":
-        infile = sys.argv[2]
-        outfile = sys.argv[3] if len(sys.argv) > 3 else infile.replace(".json", ".dat")
-        with open(infile) as f:
-            data = json.load(f)
-        encrypt(data, outfile)
-        print(f"Encrypted: {infile} -> {outfile}")
-
-    else:
-        print(f"Unknown command: {cmd}")
-        sys.exit(1)
+# Edit the JSON, then re-encrypt
+python hot_save.py encrypt HoT_progress_profile.json
 ```
 
 ## License
