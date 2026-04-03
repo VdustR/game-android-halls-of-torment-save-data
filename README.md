@@ -156,6 +156,7 @@ To extract it yourself:
        data = f.read()
 
    zstd_pos = data.find(b'\x28\xb5\x2f\xfd')  # zstd magic
+   assert zstd_pos != -1, "No zstd data found in .gdc file"
    compressed = data[zstd_pos:]
    decompressed = zstandard.ZstdDecompressor().decompress(
        compressed, max_output_size=2*1024*1024
@@ -207,7 +208,7 @@ The decrypted content is JSON. Top-level keys:
 | `Gold` | float | Gold currency | No hard cap |
 | `Shard` | float | Available (unspent) Torment Shards | No cap |
 | `NumShards` | float | Total shards ever obtained (historical) | No cap |
-| `DuelistCharges` | float | Permanent charges for [Duellist's Spark](https://hot.fandom.com/wiki/Duelist%27s_Spark) necklace. Accumulated by killing Champions (+1), Elites (+2), Bosses (+5), Lords (+15). Bonus = √charges / divisor (diminishing returns). | No cap (√ scaling) |
+| `DuelistCharges` | float | Permanent charges for [Duelist's Spark](https://hot.fandom.com/wiki/Duelist%27s_Spark) necklace. Accumulated by killing Champions (+1), Elites (+2), Bosses (+5), Lords (+15). Bonus = √charges / divisor (diminishing returns). | No cap (√ scaling) |
 
 ### Potions & Ingredients
 
@@ -277,7 +278,7 @@ Each shard provides diminishing effect per stat:
 
 Known stats: `Area`, `AttackSpeed`, `CritBonus`, `CritChance`, `Damage`, `EffectStrength`, `EmitCount`, `Force`, `HealthRegen`, `MaxHealth`
 
-Known classes (13): `Alchemist`, `Archer`, `Bard`, `Beast Huntress`, `Cleric`, `Exterminator`, `Landsknecht`, `Norseman`, `Sage`, `Shield Maiden`, `Sorceress`, `Swordsman`, `Warlock`
+Known classes (14): `Alchemist`, `Archer`, `Bard`, `Beast Huntress`, `Cleric`, `Crone`, `Exterminator`, `Landsknecht`, `Norseman`, `Sage`, `Shield Maiden`, `Sorceress`, `Swordsman`, `Warlock`
 
 > **Note**: `Shard` should equal `NumShards` minus the sum of all `ShardUpgrades` values.
 
@@ -338,7 +339,7 @@ Class marks use `char_` prefix:
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `DLCs` | array | Owned DLC identifiers (`dlc_supporter`, `dlc_bogsnbooks`) |
+| `DLCs` | array | Owned DLC identifiers (`dlc_supporter` = Supporter Pack, `dlc_bogsnbooks` = The Boglands) |
 | `ProfileVersion` | float | Save format version |
 | `WriteCount` | float | Number of times saved |
 | `DataDate` | float | Unix timestamp of last save |
@@ -436,6 +437,7 @@ adb shell "am start -n com.halls.of.torment.paid.gp/com.godot.game.GodotAppLaunc
 
 # 5. Verify changes in-game, then re-enable network
 adb shell "svc wifi enable"
+adb shell "svc data enable"
 ```
 
 > **Note**: The UID (`u0_a193`) may vary per installation. Check with:
