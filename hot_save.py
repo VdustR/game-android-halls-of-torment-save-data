@@ -81,19 +81,17 @@ def main():
     cmd = sys.argv[1]
     infile = sys.argv[2]
 
+    base, _ = os.path.splitext(infile)
+
     if cmd == "decrypt":
-        outfile = sys.argv[3] if len(sys.argv) > 3 else infile.replace(".dat", ".json")
-        if outfile == infile:
-            outfile = infile + ".json"
+        outfile = sys.argv[3] if len(sys.argv) > 3 else base + ".json"
         data = decrypt(infile)
         with open(outfile, "w") as f:
             json.dump(data, f, indent=2)
         print(f"Decrypted: {infile} -> {outfile}")
 
     elif cmd == "encrypt":
-        outfile = sys.argv[3] if len(sys.argv) > 3 else infile.replace(".json", ".dat")
-        if outfile == infile:
-            outfile = infile + ".dat"
+        outfile = sys.argv[3] if len(sys.argv) > 3 else base + ".dat"
         with open(infile) as f:
             data = json.load(f)
         encrypt(data, outfile)

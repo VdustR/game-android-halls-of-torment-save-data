@@ -1,6 +1,13 @@
-# Halls of Torment — Save File Decryption & Modification Guide
+# Halls of Torment — Android Save Data
 
-A comprehensive guide to decrypt, modify, and re-encrypt **Halls of Torment: Premium** (Android) save files.
+A comprehensive guide to decrypt, modify, and re-encrypt [**Halls of Torment: Premium**](https://play.google.com/store/apps/details?id=com.halls.of.torment.paid.gp) (Android) save files.
+
+Tested on version **1.0.1152** with DLCs:
+
+- [Supporter Pack](https://store.steampowered.com/app/3386980/Halls_of_Torment__Supporter_Pack/)
+- [The Boglands](https://store.steampowered.com/app/3919420/Halls_of_Torment__The_Boglands/) (adds Alchemist, Crone, and The Boglands stage)
+
+Pre-built save files are available on the [Releases](https://github.com/VdustR/game-android-halls-of-torment-save-data/releases) page.
 
 > **Disclaimer**: This guide is for educational and personal use only. Modifying save files may violate the game's terms of service. Use at your own risk.
 
@@ -13,7 +20,7 @@ A comprehensive guide to decrypt, modify, and re-encrypt **Halls of Torment: Pre
 - [Save File Format](#save-file-format)
 - [Decryption](#decryption)
 - [Save File Structure](#save-file-structure)
-- [Modification](#modification)
+- [Modification Rules](#modification-rules)
 - [Re-encryption](#re-encryption)
 - [Pushing Back to Device](#pushing-back-to-device)
 - [Cloud Sync Considerations](#cloud-sync-considerations)
@@ -193,106 +200,187 @@ def decrypt_save(filepath):
 
 The decrypted content is JSON. Top-level keys:
 
+### Currency & Resources
+
+| Key | Type | Description | Cap |
+|-----|------|-------------|-----|
+| `Gold` | float | Gold currency | No hard cap |
+| `Shard` | float | Available (unspent) Torment Shards | No cap |
+| `NumShards` | float | Total shards ever obtained (historical) | No cap |
+| `DuelistCharges` | float | Permanent charges for [Duellist's Spark](https://hot.fandom.com/wiki/Duelist%27s_Spark) necklace. Accumulated by killing Champions (+1), Elites (+2), Bosses (+5), Lords (+15). Bonus = √charges / divisor (diminishing returns). | No cap (√ scaling) |
+
+### Potions & Ingredients
+
 | Key | Type | Description |
 |-----|------|-------------|
-| `Gold` | float | Gold currency |
-| `Shard` | float | Available (unspent) shards |
-| `NumShards` | float | Total shards ever obtained |
-| `ShardUpgrades` | object | Per-class shard investments (class → stat → amount) |
-| `Blessings` | object | Blessing levels (stat name → level, max 5.0) |
-| `Equipped` | object | Currently equipped items by slot |
-| `ItemStash` | array | All owned items |
-| `Unlocked` | array | Unlocked characters, NPCs, and features |
-| `Quests` | object | Quest completion status |
-| `QuestBoards` | object | Quest board state |
-| `Records` | object | Personal best records |
-| `Stats` | object | Lifetime statistics |
-| `Artifacts` | array | All discovered artifacts |
-| `ActiveArtifacts` | array | Currently active artifacts |
-| `DLCs` | array | Owned DLC identifiers |
-| `Loadouts` | object | Saved loadout configurations |
-| `Ingredients` | array | Crafting material quantities (by index) |
-| `DuelistCharges` | float | Duelist charges count |
 | `NumAbilityRerollPotions` | float | Ability reroll potions |
 | `NumItemChestRerollPotions` | float | Item chest reroll potions |
 | `NumTraitBanishPotions` | float | Trait banish potions |
 | `NumTraitDoublePotions` | float | Trait double potions |
 | `NumTraitMemorizePotions` | float | Trait memorize potions |
 | `NumTraitRerollPotions` | float | Trait reroll potions |
+| `Ingredients` | array | Crafting material quantities (by index, 15 types) |
+
+> **Warning**: Modifying potion counts or ingredient values may cause the game to reset them to zero on load. Modify at your own risk.
+
+### Blessings
+
+Permanent stat upgrades purchased at the Shrine of Blessings. Max level is **5.0** for all.
+
+```json
+{
+  "damage": 5.0,
+  "damagemagic": 5.0,
+  "damagephysical": 5.0,
+  "max_health": 5.0,
+  "health_regen": 5.0,
+  "movement_speed": 5.0,
+  "attack_speed": 5.0,
+  "crit_chance": 5.0,
+  "crit_chance_base": 5.0,
+  "crit_bonus": 5.0,
+  "multi_strike": 5.0,
+  "on_hit_chance": 5.0,
+  "blockstrength": 5.0,
+  "defense": 5.0,
+  "range": 5.0,
+  "area": 5.0,
+  "duration": 5.0,
+  "pickuprange": 5.0,
+  "goldgain": 5.0,
+  "fire damage": 5.0,
+  "frost damage": 5.0,
+  "lightning damage": 5.0,
+  "abilitychance": 5.0,
+  "chestchance": 5.0,
+  "revives": 5.0,
+  "potionofoblivion": 5.0,
+  "potionofmemories": 5.0,
+  "reverbanttinkture": 5.0,
+  "strongwine": 5.0,
+  "agony": 5.0
+}
+```
+
+### Shard Upgrades
+
+Per-class stat investments via Torment Shards. No hard cap per stat, but very high values (e.g., 1000+) may cause performance issues.
+
+Each shard provides diminishing effect per stat:
+
+| Stat | Per Shard |
+|------|-----------|
+| Damage | +1% |
+| Crit Chance | +0.5% |
+| Attack Speed | +0.2% |
+| Multistrike | +0.2% |
+
+Known stats: `Area`, `AttackSpeed`, `CritBonus`, `CritChance`, `Damage`, `EffectStrength`, `EmitCount`, `Force`, `HealthRegen`, `MaxHealth`
+
+Known classes (13): `Alchemist`, `Archer`, `Bard`, `Beast Huntress`, `Cleric`, `Exterminator`, `Landsknecht`, `Norseman`, `Sage`, `Shield Maiden`, `Sorceress`, `Swordsman`, `Warlock`
+
+> **Note**: `Shard` should equal `NumShards` minus the sum of all `ShardUpgrades` values.
+
+### Equipment & Items
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `Equipped` | object | Currently equipped items by slot (`Head`, `Body`, `Feet`, `Gloves`, `Neck`, `Ring_L`, `Ring_R`, `Mark`) |
+| `ItemStash` | array | All owned item IDs (string array) |
+| `Loadouts` | object | Per-class saved loadouts (class key → slot → item ID) |
+| `ItemsInWell` | array | Items placed in the Wellkeeper's well |
+
+Item ID format: `{slot}_{name}_{variant}` (e.g., `ring_iron_boost_rare`)
+
+Rarity tiers in item IDs: (none) = common, `_boost`/`_growth`/etc. = uncommon, `_rare` suffix = very rare (purple)
+
+### Loadout Keys
+
+Loadout keys mostly match lowercase class names, with these exceptions:
+
+| Class | Loadout Key |
+|-------|-------------|
+| Swordsman | `swordman` (typo in game data) |
+| Beast Huntress | `huntress` |
+| Shield Maiden | `shieldmaiden` |
+
+### Mark IDs
+
+Class marks use `char_` prefix:
+
+| Class | Mark ID |
+|-------|---------|
+| Swordsman | `char_swordsman` |
+| Archer | `char_archer` |
+| Cleric | `char_cleric` |
+| Exterminator | `char_exterminator` |
+| Landsknecht | `char_landsknecht` |
+| Sorceress | `char_sorceress` |
+| Norseman | `char_norseman` |
+| Shield Maiden | `char_shieldmaiden` |
+| Beast Huntress | `char_beasthuntress` |
+| Sage | `char_sage` |
+| Warlock | `char_warlock` |
+| Bard | `char_bard` |
+| Alchemist | `char_alchemist` |
+| Crone | `char_crone` |
+
+### Progression
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `Quests` | array | Quest status. Each entry: `{"ID": "q_...", "completed": true/false, "count": float, "hidden": bool}` |
+| `Artifacts` | array | Discovered artifact IDs (e.g., `art_stage_traps`) |
+| `ActiveArtifacts` | array | Currently active artifact IDs |
+| `Unlocked` | array | Unlocked characters, NPCs, and features |
+
+### Metadata
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `DLCs` | array | Owned DLC identifiers (`dlc_supporter`, `dlc_bogsnbooks`) |
 | `ProfileVersion` | float | Save format version |
 | `WriteCount` | float | Number of times saved |
 | `DataDate` | float | Unix timestamp of last save |
 | `LevelCount` | float | Total runs played |
 | `TrackedQuest` | string | Currently tracked quest ID |
 | `LeaderBoardVersion` | float | Leaderboard version |
+| `Records` | object | Personal best records |
+| `Stats` | object | Lifetime statistics |
+| `QuestBoards` | object | Quest board state |
 
-### ShardUpgrades Structure
+## Modification Rules
 
-```json
-{
-  "Swordsman": {
-    "Damage": 100.0,
-    "AttackSpeed": 50.0,
-    "CritChance": 50.0
-  },
-  "Archer": {
-    "Damage": 80.0,
-    "EmitCount": 30.0
-  }
-}
-```
+### Safe to Modify
 
-Known stats: `Area`, `AttackSpeed`, `CritBonus`, `CritChance`, `Damage`, `EffectStrength`, `EmitCount`, `Force`, `HealthRegen`, `MaxHealth`
+| Field | Notes |
+|-------|-------|
+| `Gold` | No cap. ~120,000 is enough to buy everything; endgame players accumulate millions. |
+| `Blessings` | Max 5.0 per blessing. Setting above 5.0 has no additional effect. |
+| `ShardUpgrades` | No hard cap. ~200 per stat is a reasonable endgame value. Very high values (1000+) may cause lag. |
+| `Shard` / `NumShards` | Keep consistent: `Shard` = `NumShards` - total invested. |
+| `DuelistCharges` | No cap. 900 ≈ +100% bonus, 5000 ≈ +236%. Diminishing returns (√ scaling). |
+| `ItemStash` | Can add any valid item ID. |
+| `Artifacts` | Can add any valid artifact ID. |
+| `Quests` | Can mark as completed. |
+| `Loadouts` | Can assign items to class loadouts. Use correct loadout keys and mark IDs. |
+| `Equipped` | Can set currently worn items. |
 
-Known classes: `Alchemist`, `Archer`, `Bard`, `Beast Huntress`, `Cleric`, `Exterminator`, `Landsknecht`, `Norseman`, `Sage`, `Shield Maiden`, `Sorceress`, `Swordsman`, `Warlock`
+### Modify with Caution
 
-### Blessings Structure
+| Field | Risk |
+|-------|------|
+| `NumAbilityRerollPotions` / other potions | **May reset to zero** when the game loads. |
+| `Ingredients` | **May reset to zero** when the game loads. |
+| `Unlocked` | Adding invalid entries may cause issues. |
 
-```json
-{
-  "damage": 5.0,
-  "max_health": 5.0,
-  "revives": 2.0,
-  "potionofoblivion": 4.0
-}
-```
+### Do Not Modify
 
-Max level is `5.0` for all blessings.
-
-## Modification
-
-Edit the JSON as needed. Common modifications:
-
-```python
-# Gold
-data["Gold"] = 99999999.0
-
-# Shards
-data["Shard"] = 10000.0
-data["NumShards"] = 10000.0
-
-# Max all blessings
-for k in data["Blessings"]:
-    data["Blessings"][k] = 5.0
-
-# All potions to 99
-for k in ["NumAbilityRerollPotions", "NumItemChestRerollPotions",
-          "NumTraitBanishPotions", "NumTraitDoublePotions",
-          "NumTraitMemorizePotions", "NumTraitRerollPotions"]:
-    data[k] = 99.0
-
-# All ingredients to 99
-data["Ingredients"] = [99.0] * len(data["Ingredients"])
-
-# Max shard upgrades for all classes
-ALL_STATS = ["Area", "AttackSpeed", "CritBonus", "CritChance", "Damage",
-             "EffectStrength", "EmitCount", "Force", "HealthRegen", "MaxHealth"]
-for cls in data["ShardUpgrades"]:
-    if cls == "":
-        continue
-    for stat in ALL_STATS:
-        data["ShardUpgrades"][cls][stat] = 1000.0
-```
+| Field | Reason |
+|-------|--------|
+| `ProfileVersion` | May cause save migration or corruption. |
+| `WriteCount` / `DataDate` | Game uses these for cloud sync conflict resolution. |
+| `LeaderBoardVersion` | May affect leaderboard eligibility. |
 
 ## Re-encryption
 
